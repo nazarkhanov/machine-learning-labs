@@ -1,5 +1,6 @@
 import os, errno
 import argparse
+import yaml
 import numpy as np
 from torch import nn
 from torchaudio import load
@@ -7,53 +8,34 @@ from torchaudio.transforms import Spectrogram, MelSpectrogram, MFCC
 from tqdm import tqdm
 
 
-N_FFT = 1024
-WIN_LENGTH = 512
-HOP_LENGTH = 512
+def load_config(config_path):
+  with open(config_path, "r") as stream:
+    config = yaml.safe_load(stream)
 
-MIN_LENGTH = 8000
-MAX_LENGTH = 8000
+  return config
 
 
-def main(dataset_path, output_path, feature_type):
+def main(dataset_path, output_path, config_path):
   os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+  config = load_config(config_path)
   dataset = os.listdir(dataset_path)
-
-  spectrogram = Spectrogram(
-    n_fft=N_FFT,
-    win_length=WIN_LENGTH,
-    hop_length=HOP_LENGTH,
-  )
-
-  mel_spectrogram = MelSpectrogram(
-    n_fft=N_FFT,
-    win_length=WIN_LENGTH,
-    hop_length=HOP_LENGTH,
-  )
-
-  mfcc_transform = MFCC(
-    melkwargs={
-      "n_fft": N_FFT,
-      "hop_length": HOP_LENGTH,
-    },
-  )
 
   for item in tqdm(dataset):
     signal, sr = load(os.path.join(dataset_path, item))
 
-    signal = signal[:,:MAX_LENGTH]
-    signal = nn.ZeroPad2d((0, MIN_LENGTH - signal.size()[1]))(signal)
+    signal = signal[:,:config["preprocess"]["formalize"]] # cut
+    signal = nn.ZeroPad2d((0, config["preprocess"]["formalize"] - signal.size()[1]))(signal) # pad
 
     path = os.path.join(output_path, item.replace(".wav", ".npy"))
 
-    if feature_type == "spectrogram":
-      feature = spectrogram(signal)
-    elif feature_type == "mel_spectrogram":
-      feature = mel_spectrogram(signal)
+    if config["preprocess"]["transform"] == "spectrogram":
+      feature = Spectrogram(**config["preprocess"]["params"])(signal)
+    elif config["preprocess"]["transform"] == "mel_spectrogram":
+      feature = MelSpectrogram(**config["preprocess"]["params"])(signal)
     else:
-      feature = mfcc_transform(signal)
+      feature = MFCC(**config["preprocess"]["params"])(signal)
 
     feature = feature.cpu().detach().numpy()[0]
     np.save(path, np.array([feature, sr]))
@@ -63,7 +45,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Script for extracting features from raw files")
   parser.add_argument("dataset_path", type=str, help="[input] path to folder with raw files")
   parser.add_argument("output_path", type=str, help="[output] path to file to store feature files")
-  parser.add_argument("feature_type", type=str, help="[feature] type of feature to extract", nargs='?', default="mfcc")
+  parser.add_argument("config_path", type=str, help="[config] path to file with parameters")
 
   args = parser.parse_args()
-  main(args.dataset_path, args.output_path, args.feature_type)
+  main(args.dataset_path, args.output_path, args.config_path)

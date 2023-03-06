@@ -1,0 +1,20 @@
+preprocess:
+  formalize: 8000
+
+#  transform: spectogram
+#  params:
+#    n_fft: 1024
+#    win_length: 512
+#    hop_length: 512
+
+#  transform: mel_spectrogram
+#  params:
+#    n_fft: 1024
+#    win_length: 512
+#    hop_length: 512
+
+  transform: mfcc
+  params:
+    melkwargs:
+      n_fft: 1024
+      hop_length: 512
