@@ -4,3 +4,4 @@ tqdm==4.64.1
 numpy==1.23.1
 pandas==1.5.3
 soundfile==0.12.1
+PyYAML==6.0
