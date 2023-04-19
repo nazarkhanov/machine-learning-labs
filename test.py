@@ -24,3 +24,5 @@ if __name__ == "__main__":
 
   args = parser.parse_args()
   main(args.annotations_path, args.dataset_path, args.config_path, args.batches_count)
+
+# test
